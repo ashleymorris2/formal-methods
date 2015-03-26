@@ -39,12 +39,22 @@ namespace Specs_Assignment
         }
 
         [ContractPublicPropertyNameAttribute("NumberParked")]
-        private int numberParked; //Represents how many cars have been parked in the car park so far
+        private int numberParked; //Represents how many normal cars have been parked in the car park so far
         public int NumberParked
         {
             get
             {
                 return this.numberParked;
+            }
+        }
+
+        [ContractPublicPropertyNameAttribute("SubscribersParked")]
+        private int subscribersParked; //Represents how many subscribers have been paked in the car park so far.
+        public int SubscribersParked
+        {
+            get
+            {
+                return this.subscribersParked;
             }
         }
 
@@ -68,10 +78,8 @@ namespace Specs_Assignment
         }
 
         
-
-        public static int IDIOT_SPACES = 8;
+        public static int IDIOT_SPACES = 8; //Spaces reserved for the idiots.
        
-
         //Sets the car-park up for a new day. Takes two parameters: The day to set the carpark at and the size of the carpark
         //in terms of how many spaces there are.
        public CarPark(int carParkSize, int reservedSpaces)
@@ -109,7 +117,8 @@ namespace Specs_Assignment
            //The car can not be on the subscirber list.
            //There needs to be room in the non reserved area for a new car.
            //Ensures that the rest of the array is unchanged except the new car.
-           Contract.Requires(car != 0);
+           Contract.Requires(car != 0, ": The car can't be 0");
+           Contract.Requires(car < 1000, "The car can't be greater than 999");
            Contract.Requires(!spaces.Contains(car), ": The car park can't contain duplicate cars.");
            Contract.Requires(!subscriberList.Contains(car), ": Only cars without a reservation may use this method.");
            
@@ -143,6 +152,7 @@ namespace Specs_Assignment
        {
            //The car needs to be in the car park in order for it to be removed.
            Contract.Requires(car != 0, ": The car can't be 0.");
+           Contract.Requires(car < 1000, ": The car can't be greater than 999");
            Contract.Requires(spaces.Contains(car), ": The car-park needs to contain the car that is to be removed.");
 
            //Ensures that the car isn't in the array and that the rest of the array remains unchanged.
@@ -182,7 +192,8 @@ namespace Specs_Assignment
         //Or enter the car park generally outside these hours
        public void enterReservedArea(int car)
        {
-           Contract.Requires(car != 0);
+           Contract.Requires(car != 0, ": The car can't be 0");
+           Contract.Requires(car < 1000, ": The car can't be greater than 999");
            Contract.Requires(subscriberList.Contains(car),": The car doesn't have a subscription." ); //The list of subscribers is required to contain the car
            Contract.Requires(!spaces.Contains(car), ": The car park can't contain duplicate cars.");
 
@@ -191,7 +202,7 @@ namespace Specs_Assignment
            //OR
            //The the car park isn't full.
            Contract.Requires(barrierIsOpen == false && spaces.Length - numberParked - IDIOT_SPACES >= subscriberList.Length
-               || spaces.Length - numberParked - IDIOT_SPACES > 0, ": The car park is full.");
+               || spaces.Length - numberParked - IDIOT_SPACES - subscribersParked > 0, ": The car park is full.");
 
            //Ensures that the array contains the car and that the rest of the array is unchanged.
            Contract.Ensures(spaces.Contains(car));
@@ -203,22 +214,25 @@ namespace Specs_Assignment
            if (barrierIsOpen == false)
            {
                //Calculate the starting position for the reserved spaces then find the first empty reserved space.
-               int reservedOffset = spaces.Length -  subscriberList.Length;
+               int reservedOffset = spaces.Length  -  subscriberList.Length;
                int firstIndex = Array.IndexOf(spaces, 0, reservedOffset);
-               spaces[firstIndex] = car;
+               spaces[firstIndex] = car;              
            }
            else
            {
+               //Can park any where in the car park if the barrier is open (execpt the idiot spaces)
                int firstIndex = Array.IndexOf(spaces, 0, IDIOT_SPACES);
                spaces[firstIndex] = car;
            }
+
+           subscribersParked++;
        }
 
        public void makeSubscription(int car)
        {
            Contract.Requires(car != 0);
-           Contract.Requires(!subscriberList.Contains(car));
-           Contract.Requires(SubscriberList.Contains(0)); //There needs to be an empty space to proceed
+           Contract.Requires(!subscriberList.Contains(car), ": That car is already subscribed.");
+           Contract.Requires(SubscriberList.Contains(0), ": No more space on the subsciber list"); //There needs to be an empty space on the list to proceed
 
            Contract.Ensures(subscriberList.Contains(car));
            Contract.Ensures(Contract.ForAll(0, subscriberList.Length, i => subscriberList[i].Equals(Contract.OldValue(subscriberList[i]))
@@ -236,19 +250,94 @@ namespace Specs_Assignment
            this.barrierIsOpen = true;
        }
 
+        //Hideous code that prints the car park as a pretty picture
+        //Indicates the state of each space. = (empty, ocupied, r = reserved)
        public void printParkingPlan()
+       {        
+           for (int x = 0; x < spaces.Length; x++)
+           {
+               for (int i = x; i < spaces.Length; i++)
+               {
+                   Console.Write(" _____ ");
+                   if (i == 10)
+                   {
+                       //Break for a new row
+                       break;
+                   }
+               }
+
+               Console.WriteLine(" ");
+               for (int i = x; i < spaces.Length; i++)
+               {
+                   Console.Write(" |   | ");
+                   if (i == 10)
+                   {
+                       break;
+                   }
+               }
+
+               Console.WriteLine(" ");
+               for (int i = x; i < spaces.Length; i++)
+               {
+                   int reservedOffset = spaces.Length - subscriberList.Length;
+
+                   //Formatting code:
+                   if (spaces[i] == 0) // zero
+                   {
+                       if (i >= reservedOffset)
+                       {
+                           Console.Write(" | R | ");
+                       }
+                       else
+                       {
+                           Console.Write(" |   | ");
+                       }
+
+                   }
+                   if(spaces[i] < 10 && spaces[i] > 0) // upto 10
+                   {
+                       Console.Write(" | " + spaces[i] + " | ");
+                   }
+                   if (spaces[i] > 10 && spaces[i] < 100) // upto 99
+                   {
+                       Console.Write(" |" + spaces[i] + " | ");
+                   }
+                   if (spaces[i] > 99) //upto 999
+                   {
+                       Console.Write(" |" + spaces[i] + "| ");
+                   }
+                                                   
+                   if (i == 10)
+                   {
+                       break;
+                   }
+               }
+
+               Console.WriteLine(" ");
+               for (int i = x; i < spaces.Length; i++)
+               {
+                   Console.Write(" |___| ");
+                   if (i == 10)
+                   {
+                       break;
+                   }
+
+                   x = i + 1;
+               }
+               Console.WriteLine(" ");
+           }                              
+       }
+
+
+        //Prints as standard console text
+       public void printAsText()
        {
            Console.WriteLine(" ");
-
            for (int i = 0; i < spaces.Length; i++)
            {
                Console.WriteLine(spaces[i]);
            }
-
-           Console.WriteLine(" ");
-
        }
-
 
     }
 
@@ -259,29 +348,33 @@ namespace Specs_Assignment
         {
             CarPark carPark = new CarPark(18, 5);
 
-            carPark.makeSubscription(4);
-            carPark.makeSubscription(55);
-            carPark.makeSubscription(66);
+            carPark.printParkingPlan();
+
+            carPark.makeSubscription(444);
+            carPark.makeSubscription(5);
+            carPark.makeSubscription(6);
             carPark.makeSubscription(22);
             carPark.makeSubscription(11);
 
-            carPark.enterReservedArea(4);
-            carPark.enterReservedArea(55);
-            carPark.enterReservedArea(66);
+            carPark.enterReservedArea(444);
+           
          
 
             Console.WriteLine("Spaces left: " + carPark.checkAvailability());
             carPark.printParkingPlan();
 
-            carPark.enterCarPark(67);
-            carPark.enterCarPark(12);
-            carPark.enterCarPark(98);
+            carPark.enterCarPark(7);
+            carPark.enterCarPark(8);
+            carPark.enterCarPark(2);
             carPark.enterCarPark(1);
-            carPark.enterCarPark(88);
+            carPark.enterCarPark(9);
 
             carPark.openReservedArea();
-            carPark.enterCarPark(100);
-            carPark.enterCarPark(101);
+            carPark.enterCarPark(33);
+            carPark.enterCarPark(16);
+
+            
+            
           
             
 
