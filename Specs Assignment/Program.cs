@@ -118,7 +118,7 @@ namespace Specs_Assignment
            //There needs to be room in the non reserved area for a new car.
            //Ensures that the rest of the array is unchanged except the new car.
            Contract.Requires(car != 0, ": The car can't be 0");
-           Contract.Requires(car < 1000, "The car can't be greater than 999");
+           Contract.Requires(car < 1000, ": The car can't be greater than 999");
            Contract.Requires(!spaces.Contains(car), ": The car park can't contain duplicate cars.");
            Contract.Requires(!subscriberList.Contains(car), ": Only cars without a reservation may use this method.");
            
@@ -250,16 +250,19 @@ namespace Specs_Assignment
            this.barrierIsOpen = true;
        }
 
-        //Hideous code that prints the car park as a pretty picture
-        //Indicates the state of each space. = (empty, ocupied, r = reserved)
+        //Hideous code that prints the car park as a nice picture
+        //Indicates the state of each space. = (empty, ocupied, r = reserved, x = idiot spaces)
        public void printParkingPlan()
        {        
+           
            for (int x = 0; x < spaces.Length; x++)
            {
                for (int i = x; i < spaces.Length; i++)
                {
                    Console.Write(" _____ ");
-                   if (i == 10)
+
+               
+                   if (i > 0 && i % 10 == 0) //Divisable by 10? Every 10 elements start a new row...
                    {
                        //Break for a new row
                        break;
@@ -270,8 +273,11 @@ namespace Specs_Assignment
                for (int i = x; i < spaces.Length; i++)
                {
                    Console.Write(" |   | ");
-                   if (i == 10)
+
+                 
+                   if (i > 0 && i % 10 == 0) //Divisable by 10? Every 10 elements start a new row...
                    {
+                       //Break for a new row
                        break;
                    }
                }
@@ -288,27 +294,36 @@ namespace Specs_Assignment
                        {
                            Console.Write(" | R | ");
                        }
+                       else if (i < 8)
+                       {
+                           Console.Write(" | X | ");
+                       }
                        else
                        {
                            Console.Write(" |   | ");
                        }
 
                    }
-                   if(spaces[i] < 10 && spaces[i] > 0) // upto 10
+
+                   if(spaces[i] > 0 && spaces[i] < 10) // upto 10
                    {
                        Console.Write(" | " + spaces[i] + " | ");
                    }
+
                    if (spaces[i] > 10 && spaces[i] < 100) // upto 99
                    {
-                       Console.Write(" |" + spaces[i] + " | ");
+                       Console.Write(" | " + spaces[i] + "| ");
                    }
-                   if (spaces[i] > 99) //upto 999
+
+                   if (spaces[i] > 99 && spaces[i] < 1000) //upto 999
                    {
                        Console.Write(" |" + spaces[i] + "| ");
                    }
-                                                   
-                   if (i == 10)
+
+                 
+                   if (i > 0 && i % 10 == 0) //Divisable by 10? Every 10 elements start a new row...
                    {
+                       //Break for a new row
                        break;
                    }
                }
@@ -317,15 +332,21 @@ namespace Specs_Assignment
                for (int i = x; i < spaces.Length; i++)
                {
                    Console.Write(" |___| ");
-                   if (i == 10)
+
+              
+                   if (i > 0 && i % 10 == 0) //Divisable by 10? Every 10 elements start a new row...
                    {
+                       //Break for a new row
                        break;
                    }
 
                    x = i + 1;
                }
                Console.WriteLine(" ");
-           }                              
+           }
+
+           //Add a gap for a footer...
+           Console.WriteLine(" ");                
        }
 
 
@@ -333,6 +354,7 @@ namespace Specs_Assignment
        public void printAsText()
        {
            Console.WriteLine(" ");
+
            for (int i = 0; i < spaces.Length; i++)
            {
                Console.WriteLine(spaces[i]);
@@ -346,43 +368,40 @@ namespace Specs_Assignment
     {
         static void Main(string[] args)
         {
-            CarPark carPark = new CarPark(18, 5);
+            CarPark carPark = new CarPark(25, 5);
 
-            carPark.printParkingPlan();
+            carPark.printParkingPlan();       
+            Console.WriteLine("Spaces left: " + carPark.checkAvailability());
 
-            carPark.makeSubscription(444);
-            carPark.makeSubscription(5);
-            carPark.makeSubscription(6);
-            carPark.makeSubscription(22);
-            carPark.makeSubscription(11);
-
-            carPark.enterReservedArea(444);
-           
-         
+            carPark.enterCarPark(1);
+            carPark.enterCarPark(3);
+            carPark.enterCarPark(2);
 
             Console.WriteLine("Spaces left: " + carPark.checkAvailability());
+
+            carPark.enterCarPark(44);
+            carPark.enterCarPark(99);
+            carPark.enterCarPark(22);
+            carPark.enterCarPark(11);
+            carPark.enterCarPark(999);
+
+            carPark.leaveCarPark(1);
+            carPark.leaveCarPark(22);
+
+            carPark.makeSubscription(221);
+            carPark.enterReservedArea(221);
+
             carPark.printParkingPlan();
 
-            carPark.enterCarPark(7);
-            carPark.enterCarPark(8);
-            carPark.enterCarPark(2);
-            carPark.enterCarPark(1);
-            carPark.enterCarPark(9);
+            Console.WriteLine("Spaces left: " + carPark.checkAvailability());
 
             carPark.openReservedArea();
-            carPark.enterCarPark(33);
-            carPark.enterCarPark(16);
-
-            
-            
-          
-            
-
+            carPark.leaveCarPark(221);
+            carPark.enterReservedArea(221);
+            carPark.enterCarPark(191);
 
             carPark.printParkingPlan();
-           
-
-            Console.WriteLine("Spaces left: " + carPark.checkAvailability());
+          
 
             Console.ReadLine();
 
