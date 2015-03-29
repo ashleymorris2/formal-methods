@@ -7,8 +7,226 @@ using System.Threading.Tasks;
 
 namespace Specs_Assignment
 {
-    public class CarPark
+    [ContractClass(typeof(CarParkContract) )]
+    interface ICarParkBase
     {
+        int IDIOT_SPACES { get; }
+
+        int [] Spaces { get; }
+        int [] SubscriberList { get; }
+
+        int NumberParked { get; }
+        int SubscribersParked { get; }
+        int SpacesAvailable { get; }
+
+        bool BarrierIsOpen { get; }
+        bool CarParkIsOpen { get; }
+       
+        void enterCarPark(int car);
+        void leaveCarPark(int car);
+        int checkAvailability();
+        void enterReservedArea(int car);
+        void makeSubscription(int car);
+        void openReservedArea();
+        void closeCarPark();
+        void printParkingPlan();
+        void printAsText();
+    }
+
+    [ContractClassFor(typeof(ICarParkBase))]
+    abstract class CarParkContract : ICarParkBase
+    {
+
+        private static int idiot_spaces = 8; //Spaces reserved for the idiots.
+        public int IDIOT_SPACES
+        {
+            get
+            {
+                return idiot_spaces;
+            }
+        }
+
+        [ContractPublicPropertyName("Spaces")]
+        private int [] spaces;
+        public int [] Spaces
+        {
+            get { return (int[])spaces.Clone(); }
+        }
+
+        [ContractPublicPropertyName("SubscriberList")]
+        private int []subscriberList;
+        public int [] SubscriberList
+        {
+            get { return (int[])subscriberList.Clone(); }
+        }
+
+        [ContractPublicPropertyName("NumberParked")]
+        private int numberParked;
+        public int NumberParked
+        {
+            get { return default(int); }
+        }
+
+        [ContractPublicPropertyName("SubscribersParked")]
+        private int subscribersParked;
+        public int SubscribersParked
+        {
+            get { return default(int); }
+        }
+
+        [ContractPublicPropertyName("BarrierIsOpen")]
+        private bool barrierIsOpen;
+        public bool BarrierIsOpen
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        [ContractPublicPropertyName("CarParkIsOpen")]
+        private bool carParkIsOpen;
+        public bool CarParkIsOpen
+        {
+            get
+            {
+                return carParkIsOpen;
+            }
+        }
+
+
+        private int spacesAvailable;
+        public int SpacesAvailable
+        {
+            get
+            {
+                return spacesAvailable;
+            }
+        }
+
+      
+        //Prevents instantisation of the abstract class. 
+        //Code contracts is rubbish because it doesn't work with base class constructors or inherited invariants.
+        //Contract for class constructors will have to be in the subclass (CarPark)
+        private CarParkContract() { }
+
+      
+       public void enterCarPark(int car)
+        {
+            //The car can not already be in the car park
+            //The car can not be on the subscirber list.
+            //There needs to be room in the non reserved area for a new car.
+            //Ensures that the rest of the array is unchanged except the new car.
+            Contract.Requires(car != 0, ": The car can't be 0");
+            Contract.Requires(car < 1000, ": The car can't be greater than 999");
+            Contract.Requires(!Spaces.Contains(car), ": The car park can't contain duplicate cars.");
+            Contract.Requires(!SubscriberList.Contains(car), ": Only cars without a reservation may use this method.");
+
+            //Either the reserved area isn't full or the barrier is open and the whole carpark isn't full.
+            Contract.Requires(Spaces.Length - NumberParked - IDIOT_SPACES - SubscriberList.Length > 0
+                || barrierIsOpen == true && Spaces.Length - NumberParked - IDIOT_SPACES > 0, ": There is no more room!");
+
+            Contract.Ensures(spaces.Contains(car));
+            Contract.Ensures(Contract.ForAll(0, Spaces.Length, i => Spaces[i].Equals(Contract.OldValue(Spaces[i]))
+                             || Spaces[i].Equals(car)));
+        }
+
+        public void leaveCarPark(int car)
+        {
+            //The car needs to be in the car park in order for it to be removed.
+            Contract.Requires(car != 0, ": The car can't be 0.");
+            Contract.Requires(car < 1000, ": The car can't be greater than 999");
+            Contract.Requires(Spaces.Contains(car), ": The car-park needs to contain the car that is to be removed.");
+
+            //Ensures that the car isn't in the array and that the rest of the array remains unchanged.
+            //using car - car because for some reason when 0 was supplied as a parameter code contracts didn't want to do much. 
+            //i.e the post condition wasn't being checked.
+            Contract.Ensures(!Spaces.Contains(car));
+
+            //Every value either needs to be in the same position and value as the old array or 0.
+            Contract.Ensures(Contract.ForAll(0, Spaces.Length, i => Spaces[i].Equals(Contract.OldValue(Spaces[i]))
+                              || Spaces[i].Equals(car - car))); 
+        }
+
+        public int checkAvailability()
+        {
+            //Available =
+            //Number of spaces (minus) the number parked (minues) 8 idiot spaces (minus) the number of subscriber spaces.
+            Contract.Ensures(this.spacesAvailable == spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length);
+
+            //Ensures that the result is either 0 or the true number of spaces available.
+            Contract.Ensures(Contract.Result<int>() == SpacesAvailable || Contract.Result<int>() == 0);
+
+            return default(int);
+        }
+
+        public void enterReservedArea(int car)
+        {
+            Contract.Requires(car != 0, ": The car can't be 0");
+            Contract.Requires(car < 1000, ": The car can't be greater than 999");
+            Contract.Requires(SubscriberList.Contains(car), ": The car doesn't have a subscription."); //The list of subscribers is required to contain the car
+            Contract.Requires(!Spaces.Contains(car), ": The car park can't contain duplicate cars.");
+
+            //Requires that the barrier is down and the number of remaining spaces is equal to the number of cars that are
+            //subscribed to a reserved space.
+            //OR
+            //The the car park isn't full.
+            Contract.Requires(BarrierIsOpen == false && Spaces.Length - NumberParked - IDIOT_SPACES >= SubscriberList.Length
+                || Spaces.Length - NumberParked - IDIOT_SPACES - SubscribersParked > 0, ": The car park is full.");
+
+            //Ensures that the array contains the car and that the rest of the array is unchanged.
+            Contract.Ensures(spaces.Contains(car));
+            Contract.Ensures(Contract.ForAll(0, Spaces.Length, i => Spaces[i].Equals(Contract.OldValue(Spaces[i]))
+                             || Spaces[i].Equals(car)));
+        }
+
+        public void makeSubscription(int car)
+        {
+            Contract.Requires(car != 0);
+            Contract.Requires(!SubscriberList.Contains(car), ": That car is already subscribed.");
+            Contract.Requires(SubscriberList.Contains(0), ": No more space on the subsciber list"); //There needs to be an empty space on the list to proceed
+
+            Contract.Ensures(subscriberList.Contains(car));
+            Contract.Ensures(Contract.ForAll(0, SubscriberList.Length, i => SubscriberList[i].Equals(Contract.OldValue(SubscriberList[i]))
+                             || SubscriberList[i].Equals(car)));
+        }
+
+        public void openReservedArea()
+        {
+            Contract.Ensures(BarrierIsOpen);
+        }
+
+        public void closeCarPark()
+        {
+            //Ensures all the cars have been crushed... (are 0)
+            Contract.Ensures(Contract.ForAll(0, Spaces.Length, i => Spaces[i].Equals(0)));
+
+            //Ensures the boolean is false. (car park is closed)
+            Contract.Ensures(!CarParkIsOpen);
+        }
+
+        public void printParkingPlan()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void printAsText()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+    public class CarPark : ICarParkBase
+    {
+        
+        private static int idiot_spaces = 8; //Spaces reserved for the idiots.
+        public int IDIOT_SPACES
+        {
+            get
+            {
+                return idiot_spaces;
+            }
+        }
+
+
         private int day; //The current day of the week. 1 for monday, 2 for tuesday ... 6 for saturday, 7 for sunday.
         private int time; // The current hour of the day. 0 - 23;
 
@@ -69,9 +287,15 @@ namespace Specs_Assignment
         }
 
         private bool carParkIsOpen;
+        public bool CarParkIsOpen
+        {
+            get
+            {
+                return carParkIsOpen;
+            }
+        }
 
-
-        private  int spacesAvailable; 
+        private int spacesAvailable;
         public int SpacesAvailable
         {
             get
@@ -80,9 +304,7 @@ namespace Specs_Assignment
             }
         }
 
-        
-        public static int IDIOT_SPACES = 8; //Spaces reserved for the idiots.
-       
+      
         //Sets the car-park up for a new day. Takes two parameters: The day to set the carpark at and the size of the carpark
         //in terms of how many spaces there are.
        public CarPark(int carParkSize, int reservedSpaces)
@@ -98,10 +320,7 @@ namespace Specs_Assignment
             Contract.Requires(reservedSpaces != 0 && reservedSpaces < carParkSize, 
                 ": reservedSpaces needs to be greater than 0 and less than the car parks size");
 
-            Contract.Requires(carParkSize - IDIOT_SPACES - reservedSpaces > 0, ": You need at least 1 non-reserved space.");
-
-            //this.day = day;
-            //this.time = 9;
+            Contract.Requires(carParkSize - 8- reservedSpaces > 0, ": You need at least 1 non-reserved space.");
 
             subscriberList = new int[reservedSpaces];
             spaces = new int[carParkSize];
@@ -116,24 +335,7 @@ namespace Specs_Assignment
         //Allows any car without a reservation to enter the carpark.
         //Takes the car that is to enter the car park as a paramter and needs to be a unique integer
        public void enterCarPark(int car)
-       {
-           //The car can not already be in the car park
-           //The car can not be on the subscirber list.
-           //There needs to be room in the non reserved area for a new car.
-           //Ensures that the rest of the array is unchanged except the new car.
-           Contract.Requires(car != 0, ": The car can't be 0");
-           Contract.Requires(car < 1000, ": The car can't be greater than 999");
-           Contract.Requires(!spaces.Contains(car), ": The car park can't contain duplicate cars.");
-           Contract.Requires(!subscriberList.Contains(car), ": Only cars without a reservation may use this method.");
-           
-           //Either the reserved area isn't full or the barrier is open and the whole carpark isn't full.
-           Contract.Requires(spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length > 0 
-               || barrierIsOpen == true && spaces.Length - numberParked - IDIOT_SPACES >0, ": There is no more room!");
-
-           Contract.Ensures(spaces.Contains(car));
-           Contract.Ensures(Contract.ForAll(0, spaces.Length, i => spaces[i].Equals( Contract.OldValue(spaces[i]) ) 
-                            || spaces[i].Equals(car)) );
-
+       {          
            //Gets the first empty element (0) of the arrray to write to. 
            //C# treats 0 as an empty element.
            int firstIndex = Array.IndexOf(spaces, 0, IDIOT_SPACES);
@@ -144,30 +346,14 @@ namespace Specs_Assignment
            //Update the available spaces
            //If 0 then there are no more reserved spaces left.  
            //If cars are still using this method and spaces available is 0 then cars must be entering the reserved space.
-       
-           spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;
-           
+           spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;         
        }
 
 
         //Allows any car from any area to leave the car park.
         //Takes the car that is to leave the car park as a parameter
        public void leaveCarPark(int car)
-       {
-           //The car needs to be in the car park in order for it to be removed.
-           Contract.Requires(car != 0, ": The car can't be 0.");
-           Contract.Requires(car < 1000, ": The car can't be greater than 999");
-           Contract.Requires(spaces.Contains(car), ": The car-park needs to contain the car that is to be removed.");
-
-           //Ensures that the car isn't in the array and that the rest of the array remains unchanged.
-           //using car - car because for some reason when 0 was supplied as a parameter code contracts didn't want to do much. 
-           //i.e the post condition wasn't being checked.
-           Contract.Ensures(!spaces.Contains(car));
-
-           //Every value either needs to be in the same position and value as the old array or 0.
-           Contract.Ensures(Contract.ForAll(0, spaces.Length, i => spaces[i].Equals(Contract.OldValue(spaces[i])) 
-                             || spaces[i].Equals( car - car))); 
-                        
+       {                      
            int firstIndex = Array.IndexOf(spaces, car); //Searches the array for the first index of the car (the only occurance(hopefully!))
 
            spaces[firstIndex] = 0;         
@@ -180,18 +366,11 @@ namespace Specs_Assignment
 
         //Reports on the number of non-reserved spaces available.
        public int checkAvailability()
-       {
-           //Available =
-           //Number of spaces (minus) the number parked (minues) 8 idiot spaces (minus) the number of subscriber spaces.
-           Contract.Ensures(this.spacesAvailable == spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length);
-
-           //Ensures that the result is either 0 or the true number of spaces available.
-           Contract.Ensures(Contract.Result<int>() == spacesAvailable || Contract.Result<int>() == 0);
-        
+       {     
            //Returns the larger of the 2 numbers.
            //If spacesAvailable is < 0 it means that cars have made use of the reserved space but spacesAvailable will still be updated.
            //Returning 0 means that no more non-reserved spaces are available, but normal cars are making use of reserved spaces.
-           return Math.Max(0, spacesAvailable);   
+           return Math.Max(0, spacesAvailable);              
        }
 
 
@@ -199,24 +378,6 @@ namespace Specs_Assignment
         //Or enter the car park generally outside these hours
        public void enterReservedArea(int car)
        {
-           Contract.Requires(car != 0, ": The car can't be 0");
-           Contract.Requires(car < 1000, ": The car can't be greater than 999");
-           Contract.Requires(subscriberList.Contains(car),": The car doesn't have a subscription." ); //The list of subscribers is required to contain the car
-           Contract.Requires(!spaces.Contains(car), ": The car park can't contain duplicate cars.");
-
-           //Requires that the barrier is down and the number of remaining spaces is equal to the number of cars that are
-           //subscribed to a reserved space.
-           //OR
-           //The the car park isn't full.
-           Contract.Requires(barrierIsOpen == false && spaces.Length - numberParked - IDIOT_SPACES >= subscriberList.Length
-               || spaces.Length - numberParked - IDIOT_SPACES - subscribersParked > 0, ": The car park is full.");
-
-           //Ensures that the array contains the car and that the rest of the array is unchanged.
-           Contract.Ensures(spaces.Contains(car));
-           Contract.Ensures(Contract.ForAll(0, spaces.Length, i => spaces[i].Equals(Contract.OldValue(spaces[i]))
-                            || spaces[i].Equals(car)));
-
-
            //If the barrier isn't open for everyone then the car can only park in the reserved spaces.
            if (barrierIsOpen == false)
            {
@@ -235,38 +396,27 @@ namespace Specs_Assignment
            subscribersParked++;
        }
 
+
+
        public void makeSubscription(int car)
        {
-           Contract.Requires(car != 0);
-           Contract.Requires(!subscriberList.Contains(car), ": That car is already subscribed.");
-           Contract.Requires(subscriberList.Contains(0), ": No more space on the subsciber list"); //There needs to be an empty space on the list to proceed
-
-           Contract.Ensures(subscriberList.Contains(car));
-           Contract.Ensures(Contract.ForAll(0, subscriberList.Length, i => subscriberList[i].Equals(Contract.OldValue(subscriberList[i]))
-                            || subscriberList[i].Equals(car)));
-          
-
            int firstIndex = Array.IndexOf(subscriberList, 0);
            subscriberList[firstIndex] = car;          
        }
 
+
+
        public void openReservedArea()
        {
-           Contract.Ensures(barrierIsOpen);
-
            this.barrierIsOpen = true;
 
            Console.WriteLine("The reserved area is open.");
        }
 
+
+
        public void closeCarPark()
        {
-           //Ensures all the cars have been crushed... (are 0)
-           Contract.Ensures(Contract.ForAll(0, spaces.Length, i => spaces[i].Equals( 0 )));
-
-           //Ensures the boolean is false. (car park is closed)
-           Contract.Ensures(!carParkIsOpen);
-
            for (int i = 0; i < spaces.Length; i++)
            {
                spaces[i] = 0;
@@ -277,6 +427,7 @@ namespace Specs_Assignment
            Console.WriteLine("It's 11pm the car park is now closed!");
 
        }
+
 
         //Hideous code that prints the car park as a nice picture
         //Indicates the state of each space. = (empty, ocupied, r = reserved, x = idiot spaces)
@@ -412,7 +563,6 @@ namespace Specs_Assignment
             carPark.printParkingPlan();       
             Console.WriteLine("Spaces left: " + carPark.checkAvailability());
 
-            carPark.enterCarPark(1);
             carPark.enterCarPark(3);
             carPark.enterCarPark(2);
 
@@ -426,7 +576,7 @@ namespace Specs_Assignment
             carPark.enterCarPark(11);
             carPark.enterCarPark(999);
 
-            carPark.leaveCarPark(1);
+        
             carPark.leaveCarPark(22);
 
             carPark.makeSubscription(221);
