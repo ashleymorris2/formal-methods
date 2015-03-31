@@ -101,6 +101,8 @@ namespace Specs_Assignment
             }
         }
 
+    
+
       
         //Prevents instantisation of the abstract class. 
         //Code contracts is rubbish because it doesn't work with base class constructors or inherited invariants.
@@ -152,7 +154,7 @@ namespace Specs_Assignment
 
         public int checkAvailability()
         {
-            Contract.Requires(CarParkIsOpen, ": The car park is closed")
+            Contract.Requires(CarParkIsOpen, ": The car park is closed");
 
             //Available =
             //Number of spaces (minus) the number parked (minues) 8 idiot spaces (minus) the number of subscriber spaces.
@@ -318,6 +320,8 @@ namespace Specs_Assignment
             }
         }
 
+        private int numberOfSubs;
+
         [ContractInvariantMethod]
         private void ObjectInvariant()
         {
@@ -325,6 +329,7 @@ namespace Specs_Assignment
             //The length minus the number parked needs to be greater or equal to the number of spaces that have been
             //reserved for idiots.
             Contract.Invariant(spaces.Length - numberParked - subscribersParked >= IDIOT_SPACES);
+            Contract.Invariant(numberOfSubs <= subscriberList.Length); //Number of subs can always be less than or equal to the size of the list
         } 
 
       
@@ -363,12 +368,17 @@ namespace Specs_Assignment
            int firstIndex = Array.IndexOf(spaces, 0, IDIOT_SPACES);
            spaces[firstIndex] = car;
         
-           numberParked++;
- 
-           //Update the available spaces
+            int reservedOffset = spaces.Length  -  subscriberList.Length;
+
            //If 0 then there are no more reserved spaces left.  
            //If cars are still using this method and spaces available is 0 then cars must be entering the reserved space.
-           spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;         
+           //If the first index is greater than the reserved offset then the car must be parking in the reserved spaces so don't 
+           //alter the number of spaces available.
+            if (firstIndex < reservedOffset)
+            {
+                numberParked++;
+                spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;            
+            }    
        }
 
 
@@ -378,11 +388,22 @@ namespace Specs_Assignment
        {                      
            int firstIndex = Array.IndexOf(spaces, car); //Searches the array for the first index of the car (the only occurance(hopefully!))
 
-           spaces[firstIndex] = 0;         
-           numberParked--;
-   
-           //Update the available spaces
-           spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;
+           spaces[firstIndex] = 0;
+           if (subscriberList.Contains(car))
+           {
+               subscribersParked--;
+           }
+           else
+           {           
+               //Update the available spaces
+               int reservedOffset = spaces.Length - subscriberList.Length;
+               if (firstIndex < reservedOffset)
+               {
+                   numberParked--;
+                   spacesAvailable = spaces.Length - numberParked - IDIOT_SPACES - subscriberList.Length;                
+               }
+           }
+                   
        }
 
 
@@ -406,6 +427,7 @@ namespace Specs_Assignment
                //Calculate the starting position for the reserved spaces then find the first empty reserved space.
                int reservedOffset = spaces.Length  -  subscriberList.Length;
                int firstIndex = Array.IndexOf(spaces, 0, reservedOffset);
+
                spaces[firstIndex] = car;              
            }
            else
@@ -423,7 +445,8 @@ namespace Specs_Assignment
        public void makeSubscription(int car)
        {
            int firstIndex = Array.IndexOf(subscriberList, 0);
-           subscriberList[firstIndex] = car;          
+           subscriberList[firstIndex] = car;
+           numberOfSubs++;
        }
 
 
@@ -449,7 +472,7 @@ namespace Specs_Assignment
            //Car park is closed.
            this.carParkIsOpen = false;
 
-           Console.WriteLine("It's 11pm the car park is now closed!");
+           Console.WriteLine("It's 11pm the car park is now closed");
        }
 
 
@@ -590,6 +613,10 @@ namespace Specs_Assignment
             carPark.enterCarPark(2);
             carPark.enterCarPark(4);
             carPark.makeSubscription(3);
+            carPark.makeSubscription(11);
+            carPark.makeSubscription(14);
+            carPark.makeSubscription(33);
+            carPark.makeSubscription(221);
       
             carPark.enterReservedArea(3);
             carPark.enterCarPark(5);
@@ -599,16 +626,42 @@ namespace Specs_Assignment
 
             //carPark.enterCarPark(6);
             carPark.enterCarPark(7);
+            carPark.enterReservedArea(14);
+            carPark.enterReservedArea(11);
+            carPark.enterReservedArea(33);
+            carPark.enterReservedArea(221);
 
-            carPark.closeCarPark();
+            carPark.enterCarPark(15);
 
-           
+            carPark.leaveCarPark(14);
+            carPark.leaveCarPark(33);
+            carPark.leaveCarPark(15);
+     
+            
+            carPark.printParkingPlan();
+            Console.WriteLine(" Spaces left: " + carPark.checkAvailability());
+
+            carPark.openReservedArea();
+
+            carPark.enterCarPark(76);
+            carPark.enterCarPark(134);
+            carPark.enterCarPark(135);
+
+ carPark.leaveCarPark(221);
 
             carPark.printParkingPlan();
             Console.WriteLine(" Spaces left: " + carPark.checkAvailability());
 
-          
-            
+            carPark.leaveCarPark(76);
+            carPark.leaveCarPark(134);
+            carPark.leaveCarPark(135);
+            carPark.leaveCarPark(11);
+            carPark.leaveCarPark(4);
+            carPark.leaveCarPark(3);
+
+            carPark.printParkingPlan();
+            Console.WriteLine(" Spaces left: " + carPark.checkAvailability());
+           
 
             Console.ReadLine();
         }
